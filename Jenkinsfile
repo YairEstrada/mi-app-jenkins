@@ -9,9 +9,9 @@ pipeline {
     
     environment {
         // ⚠️ CAMBIA A TU USUARIO DE GITHUB
-        GITHUB_USER = 'yairgiovanicambronestrada-blip'
+        GITHUB_USER = 'YairEstrada'
         REGISTRY = 'ghcr.io'
-        IMAGE_NAME = 'yairgiovanicambronestrada-blip/mi-app'   // OJO: el repo es 'mi-app', no 'mi-app-jenkins'
+        IMAGE_NAME = 'YairEstrada/mi-app-jenkins'
         
         COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
