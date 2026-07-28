@@ -10,7 +10,6 @@ pipeline {
         GITHUB_USER = 'YairEstrada'
         REGISTRY = 'ghcr.io'
         IMAGE_NAME = 'YairEstrada/mi-app-jenkins'
-        // Variables que se asignarán en el stage Prepare
         COMMIT_SHA = ''
         BUILD_TIMESTAMP = ''
         IMAGE_TAG_LATEST = ''
@@ -26,21 +25,17 @@ pipeline {
                 sh 'docker --version'
                 sh 'node --version'
                 sh 'npm --version'
-                sh "git config --global --add safe.directory ${env.WORKSPACE}"
+                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins'
 
                 script {
-                    sh 'pwd'
-                    sh 'ls -la'
-                    sh 'git log --oneline -1'
-                    sh 'git rev-parse --short HEAD'
-                    // Asignamos las variables de entorno usando env.
+                    // ✅ Asignación correcta usando env.
                     env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
                     env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
                     env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
                     env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
 
-                    // Mostramos los valores con env.
+                    // ✅ Ahora los echo mostrarán el valor real
                     echo "COMMIT_SHA=${env.COMMIT_SHA}"
                     echo "BUILD_TIMESTAMP=${env.BUILD_TIMESTAMP}"
                     echo "IMAGE_TAG_COMMIT=${env.IMAGE_TAG_COMMIT}"
