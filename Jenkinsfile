@@ -26,7 +26,7 @@ pipeline {
                 sh 'docker --version'
                 sh 'node --version'
                 sh 'npm --version'
-                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins'
+               sh "git config --global --add safe.directory ${env.WORKSPACE}"
 
                 script {
                     // Obtenemos los valores y los guardamos en variables de entorno
