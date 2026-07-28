@@ -1,93 +1,89 @@
 pipeline {
-    // EJECUTAR DENTRO DE UN CONTENEDOR CON NODE 18 Y ACCESO AL DOCKER DEL HOST
     agent {
         docker {
             image 'node:18-alpine'
             args '-v /var/run/docker.sock:/var/run/docker.sock -u root'
         }
     }
-    
+
     environment {
-        // ⚠️ CAMBIA A TU USUARIO DE GITHUB
         GITHUB_USER = 'YairEstrada'
         REGISTRY = 'ghcr.io'
         IMAGE_NAME = 'YairEstrada/mi-app-jenkins'
-        
-        COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
-        
-        IMAGE_TAG_LATEST = "${REGISTRY}/${IMAGE_NAME}:latest"
-        IMAGE_TAG_COMMIT = "${REGISTRY}/${IMAGE_NAME}:${COMMIT_SHA}"
-        IMAGE_TAG_BUILD = "${REGISTRY}/${IMAGE_NAME}:build-${BUILD_TIMESTAMP}"
+        // Inicializamos las variables vacías (se asignarán en el stage Prepare)
+        COMMIT_SHA = ''
+        BUILD_TIMESTAMP = ''
+        IMAGE_TAG_LATEST = ''
+        IMAGE_TAG_COMMIT = ''
+        IMAGE_TAG_BUILD = ''
     }
-    
+
     stages {
         stage('Prepare') {
             steps {
                 echo '🔧 Preparando entorno...'
-                // Instalar Docker CLI dentro del contenedor agente (Alpine)
+                // Instalamos git y docker-cli
                 sh 'apk add --no-cache docker-cli git'
                 sh 'docker --version'
                 sh 'node --version'
                 sh 'npm --version'
+
+                // Ahora obtenemos los valores y los asignamos a las variables de entorno
+                script {
+                    env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
+                    env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
+                    env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
+                    env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
+                }
             }
         }
-        
-        stage('Install Dependencies') {
+
+        stage('Install') {
             steps {
-                echo '📥 Instalando dependencias...'
                 sh 'npm ci'
             }
         }
-        
+
         stage('Test') {
             steps {
-                echo '🧪 Ejecutando tests...'
                 sh 'npm test'
             }
         }
-        
-        stage('Build Docker Image') {
+
+        stage('Build') {
             steps {
-                echo '🐳 Construyendo imagen Docker...'
                 script {
-                    docker.build("${IMAGE_TAG_COMMIT}")
+                    docker.build("${env.IMAGE_TAG_COMMIT}")
                 }
             }
         }
-        
-        stage('Push to Registry') {
+
+        stage('Push') {
             steps {
-                echo '📤 Publicando imagen en GitHub Container Registry...'
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     sh """
-                        echo \$GITHUB_TOKEN | docker login ghcr.io -u ${GITHUB_USER} --password-stdin
-                        docker tag ${IMAGE_TAG_COMMIT} ${IMAGE_TAG_LATEST}
-                        docker tag ${IMAGE_TAG_COMMIT} ${IMAGE_TAG_BUILD}
-                        docker push ${IMAGE_TAG_COMMIT}
-                        docker push ${IMAGE_TAG_LATEST}
-                        docker push ${IMAGE_TAG_BUILD}
+                        echo \$GITHUB_TOKEN | docker login ghcr.io -u ${env.GITHUB_USER} --password-stdin
+                        docker tag ${env.IMAGE_TAG_COMMIT} ${env.IMAGE_TAG_LATEST}
+                        docker tag ${env.IMAGE_TAG_COMMIT} ${env.IMAGE_TAG_BUILD}
+                        docker push ${env.IMAGE_TAG_COMMIT}
+                        docker push ${env.IMAGE_TAG_LATEST}
+                        docker push ${env.IMAGE_TAG_BUILD}
                     """
                 }
             }
         }
-        
-        stage('Verify Published Image') {
+
+        stage('Verify') {
             steps {
-                echo '✅ Verificando imagen publicada...'
-                script {
-                    sh """
-                        echo "📦 Imagen publicada: ${IMAGE_TAG_COMMIT}"
-                        echo "🏷️ Tags disponibles:"
-                        echo "  - ${IMAGE_TAG_COMMIT}"
-                        echo "  - ${IMAGE_TAG_LATEST}"
-                        echo "  - ${IMAGE_TAG_BUILD}"
-                    """
-                }
+                sh """
+                    echo "✅ Imagen publicada: ${env.IMAGE_TAG_COMMIT}"
+                    echo "Tags: latest, build-${env.BUILD_TIMESTAMP}"
+                """
             }
         }
     }
-    
+
     post {
         success { echo '🎉 Pipeline completado exitosamente!' }
         failure { echo '❌ Pipeline falló!' }
