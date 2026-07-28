@@ -10,7 +10,6 @@ pipeline {
         GITHUB_USER = 'YairEstrada'
         REGISTRY = 'ghcr.io'
         IMAGE_NAME = 'YairEstrada/mi-app-jenkins'
-        // Inicializamos las variables vacías (se asignarán en el stage Prepare)
         COMMIT_SHA = ''
         BUILD_TIMESTAMP = ''
         IMAGE_TAG_LATEST = ''
@@ -18,26 +17,26 @@ pipeline {
         IMAGE_TAG_BUILD = ''
     }
 
-    stage('Prepare') {
-    steps {
-        echo '🔧 Preparando entorno...'
-        sh 'apk add --no-cache docker-cli git'
-        sh 'docker --version'
-        sh 'node --version'
-        sh 'npm --version'
+    stages {
+        stage('Prepare') {
+            steps {
+                echo '🔧 Preparando entorno...'
+                sh 'apk add --no-cache docker-cli git'
+                sh 'docker --version'
+                sh 'node --version'
+                sh 'npm --version'
 
-        // 🔥 Esta línea evita el error "dubious ownership"
-        sh 'git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins'
+                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins'
 
-        script {
-            env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-            env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
-            env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
-            env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
-            env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
+                script {
+                    env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
+                    env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
+                    env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
+                    env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
+                }
+            }
         }
-    }
-}
 
         stage('Install') {
             steps {
@@ -85,8 +84,12 @@ pipeline {
     }
 
     post {
-        success { echo '🎉 Pipeline completado exitosamente!' }
-        failure { echo '❌ Pipeline falló!' }
+        success {
+            echo '🎉 Pipeline completado exitosamente!'
+        }
+        failure {
+            echo '❌ Pipeline falló!'
+        }
         cleanup {
             echo '🧹 Limpiando recursos...'
             sh 'docker image prune -f || true'
