@@ -29,6 +29,10 @@ pipeline {
                 sh "git config --global --add safe.directory ${env.WORKSPACE}"
 
                 script {
+                    sh 'pwd'
+                    sh 'ls -la'
+                    sh 'git log --oneline -1'
+                    sh 'git rev-parse --short HEAD'
                     // Asignamos las variables de entorno usando env.
                     env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
