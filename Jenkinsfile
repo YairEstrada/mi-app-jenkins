@@ -18,33 +18,30 @@ pipeline {
         IMAGE_TAG_BUILD = ''
     }
 
-    stages {
-        stage('Prepare') {
-            steps {
-                echo '🔧 Preparando entorno...'
-                sh 'apk add --no-cache docker-cli git'
-                sh 'docker --version'
-                sh 'node --version'
-                sh 'npm --version'
-               sh "git config --global --add safe.directory ${env.WORKSPACE}"
+   stage('Prepare') {
+    steps {
+        echo '🔧 Preparando entorno...'
+        sh 'apk add --no-cache docker-cli git'
+        sh 'docker --version'
+        sh 'node --version'
+        sh 'npm --version'
+        // ✅ Usamos ${env.WORKSPACE} para el directorio actual
+        sh "git config --global --add safe.directory ${env.WORKSPACE}"
+        // (Opcional) para depuración:
+        sh "echo 'Workspace: ${env.WORKSPACE}'"
 
-                script {
-                    // Obtenemos los valores y los guardamos en variables de entorno
-                    env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
-                    
-                    // Construimos los tags
-                    env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
-                    env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
-                    env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
-
-                    // Mostramos los valores para depuración (con env.)
-                    echo "COMMIT_SHA=${env.COMMIT_SHA}"
-                    echo "BUILD_TIMESTAMP=${env.BUILD_TIMESTAMP}"
-                    echo "IMAGE_TAG_COMMIT=${env.IMAGE_TAG_COMMIT}"
-                }
-            }
+        script {
+            env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+            env.BUILD_TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
+            env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
+            env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${env.COMMIT_SHA}"
+            env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${env.BUILD_TIMESTAMP}"
+            echo "COMMIT_SHA=${env.COMMIT_SHA}"
+            echo "BUILD_TIMESTAMP=${env.BUILD_TIMESTAMP}"
+            echo "IMAGE_TAG_COMMIT=${env.IMAGE_TAG_COMMIT}"
         }
+    }
+}
 
         stage('Install') {
             steps {
