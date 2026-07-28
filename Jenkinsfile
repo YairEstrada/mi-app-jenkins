@@ -26,7 +26,7 @@ pipeline {
             steps {
                 echo '🔧 Preparando entorno...'
                 // Instalar Docker CLI dentro del contenedor agente (Alpine)
-                sh 'apk add --no-cache docker-cli'
+                sh 'apk add --no-cache docker-cli git'
                 sh 'docker --version'
                 sh 'node --version'
                 sh 'npm --version'
