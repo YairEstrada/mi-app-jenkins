@@ -7,14 +7,12 @@ pipeline {
     }
 
     environment {
-        // Nombre de la imagen local (se usará para el build)
+        // Variables de entorno que usaremos en todo el pipeline
+        GITHUB_USER = 'YairEstrada'
         IMAGE_NAME = 'mi-app'
         TAG = 'latest'
-        
-        // Variables para el tag en GHCR (con minúsculas)
         GHCR_IMAGE = 'ghcr.io/yairestrada/mi-app-jenkins'
-        
-        // Obtener commit SHA y timestamp (se calculan en el stage Prepare)
+        // Declaramos las variables que se asignarán en Prepare
         COMMIT_SHA = ''
         TIMESTAMP = ''
     }
@@ -25,18 +23,14 @@ pipeline {
                 echo '🔧 Preparando entorno...'
                 sh '''
                     apk add --no-cache docker-cli git
-                    
-                    # Solución al error de "dubious ownership"
                     git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins
-                    
-                    # Obtener commit corto y timestamp
-                    echo "COMMIT_SHA=$(git rev-parse --short HEAD)"
-                    echo "TIMESTAMP=$(date +%Y%m%d-%H%M%S)"
                 '''
-                // Guardamos los valores en variables de entorno para usarlos luego
                 script {
+                    // Asignamos los valores a las variables de entorno
                     env.COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.TIMESTAMP = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
+                    echo "COMMIT_SHA=${env.COMMIT_SHA}"
+                    echo "TIMESTAMP=${env.TIMESTAMP}"
                 }
             }
         }
@@ -67,14 +61,12 @@ pipeline {
                 echo '🚀 Subiendo imagen a GitHub Container Registry...'
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     sh """
-                        echo \$GITHUB_TOKEN | docker login ghcr.io -u YairEstrada --password-stdin
+                        echo \$GITHUB_TOKEN | docker login ghcr.io -u ${GITHUB_USER} --password-stdin
                         
-                        # Etiquetar con 'latest' y con el commit SHA
                         docker tag ${IMAGE_NAME}:${TAG} ${GHCR_IMAGE}:latest
                         docker tag ${IMAGE_NAME}:${TAG} ${GHCR_IMAGE}:${COMMIT_SHA}
                         docker tag ${IMAGE_NAME}:${TAG} ${GHCR_IMAGE}:build-${TIMESTAMP}
                         
-                        # Subir todas las etiquetas
                         docker push ${GHCR_IMAGE}:latest
                         docker push ${GHCR_IMAGE}:${COMMIT_SHA}
                         docker push ${GHCR_IMAGE}:build-${TIMESTAMP}
