@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:18-alpine'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         IMAGE_NAME = "ghcr.io/yairestrada/mi-app-jenkins"
@@ -10,15 +15,15 @@ pipeline {
         stage('Prepare') {
             steps {
                 echo '🔧 Preparando entorno...'
-                sh 'apk add --no-cache docker-cli git || true'
+                sh 'apk add --no-cache docker-cli git'
 
                 script {
-                    COMMIT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    BUILD_TIMESTAMP = sh(script: "date '+%Y%m%d-%H%M%S'", returnStdout: true).trim()
-                    IMAGE_TAG = "${COMMIT_SHA}-${BUILD_TIMESTAMP}"
+                    def COMMIT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    def BUILD_TIMESTAMP = sh(script: "date '+%Y%m%d-%H%M%S'", returnStdout: true).trim()
+                    env.IMAGE_TAG = "${COMMIT_SHA}-${BUILD_TIMESTAMP}"
                 }
 
-                echo "Tag: ${IMAGE_TAG}"
+                echo "Tag: ${env.IMAGE_TAG}"
             }
         }
 
@@ -36,12 +41,10 @@ pipeline {
 
         stage('Build') {
             steps {
-                script {
-                    sh """
-                    docker build -t ${IMAGE_NAME}:latest .
-                    docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
-                }
+                sh """
+                docker build -t ${IMAGE_NAME}:latest .
+                docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${env.IMAGE_TAG}
+                """
             }
         }
 
@@ -51,7 +54,7 @@ pipeline {
                     sh """
                     echo \$GITHUB_TOKEN | docker login ghcr.io -u yairestrada --password-stdin
                     docker push ${IMAGE_NAME}:latest
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_NAME}:${env.IMAGE_TAG}
                     """
                 }
             }
