@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'node:18-alpine'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -68,12 +68,9 @@ pipeline {
     }
 
     post {
-        failure {
-            echo '❌ Pipeline falló!'
-        }
         always {
             echo '🧹 Limpiando recursos...'
-            sh 'docker image prune -f'
+            sh 'docker image prune -f || true'
         }
     }
-}
+}     
