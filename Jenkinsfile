@@ -10,7 +10,7 @@ pipeline {
         IMAGE_NAME = 'mi-app'
         TAG = 'latest'
         REGISTRY = 'ghcr.io'
-        REPO = 'ghcr.io/yairestrada/mi-app'
+        REPO = 'ghcr.io/yairgiovanicambronestrada-blip/mi-app'
     }
 
     stages {
