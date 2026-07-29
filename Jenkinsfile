@@ -10,7 +10,7 @@ pipeline {
         IMAGE_NAME = 'mi-app'
         TAG = 'latest'
         REGISTRY = 'ghcr.io'
-        REPO = 'ghcr.io/YairEstrada/mi-app'
+        REPO = 'ghcr.io/yairestrada/mi-app'
     }
 
     stages {
@@ -53,24 +53,24 @@ pipeline {
         }
 
         stage('Push') {
-            steps {
-                echo '🚀 Subiendo imagen a GitHub Packages (GHCR)...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-credentials',
-                    usernameVariable: 'USERNAME',
-                    passwordVariable: 'TOKEN'
-                )]) {
-                    sh '''
-                    echo $TOKEN | docker login $REGISTRY -u $USERNAME --password-stdin
-                    
-                    FULL_IMAGE=$REPO:$TAG
-                    
-                    docker tag $IMAGE_NAME:$TAG $FULL_IMAGE
-                    docker push $FULL_IMAGE
-                    '''
-                }
-            }
+    steps {
+        echo '🚀 Subiendo imagen a GitHub Packages (GHCR)...'
+        withCredentials([usernamePassword(
+            credentialsId: 'github-credentials',
+            usernameVariable: 'USERNAME',
+            passwordVariable: 'TOKEN'
+        )]) {
+            sh '''
+            echo $TOKEN | docker login ghcr.io -u $USERNAME --password-stdin
+            
+            FULL_IMAGE=ghcr.io/yairestrada/mi-app:latest
+            
+            docker tag mi-app:latest $FULL_IMAGE
+            docker push $FULL_IMAGE
+            '''
         }
+    }
+}
 
         stage('Verify') {
             steps {
