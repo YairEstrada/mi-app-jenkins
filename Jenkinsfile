@@ -9,6 +9,8 @@ pipeline {
     environment {
         IMAGE_NAME = 'mi-app'
         TAG = 'latest'
+        REGISTRY = 'ghcr.io'
+        REPO = 'ghcr.io/YairEstrada/mi-app'
     }
 
     stages {
@@ -19,10 +21,9 @@ pipeline {
                 sh '''
                 apk add --no-cache docker-cli git
                 
-                # Solución al error de "dubious ownership"
+                # Fix Git dubious ownership
                 git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins
                 
-                # Obtener commit corto (ya no fallará)
                 git rev-parse --short HEAD
                 '''
             }
@@ -45,23 +46,38 @@ pipeline {
         stage('Build') {
             steps {
                 echo '🏗️ Construyendo imagen Docker...'
-                sh 'docker build -t $IMAGE_NAME:$TAG .'
+                sh '''
+                docker build -t $IMAGE_NAME:$TAG .
+                '''
             }
         }
 
         stage('Push') {
             steps {
-                echo '🚀 Subiendo imagen...'
-                sh '''
-                echo "Aquí iría docker push si tienes registry configurado"
-                '''
+                echo '🚀 Subiendo imagen a GitHub Packages (GHCR)...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'USERNAME',
+                    passwordVariable: 'TOKEN'
+                )]) {
+                    sh '''
+                    echo $TOKEN | docker login $REGISTRY -u $USERNAME --password-stdin
+                    
+                    FULL_IMAGE=$REPO:$TAG
+                    
+                    docker tag $IMAGE_NAME:$TAG $FULL_IMAGE
+                    docker push $FULL_IMAGE
+                    '''
+                }
             }
         }
 
         stage('Verify') {
             steps {
-                echo '✅ Verificando contenedor...'
-                sh 'docker images | grep $IMAGE_NAME'
+                echo '✅ Verificando imagen publicada...'
+                sh '''
+                docker images | grep $IMAGE_NAME
+                '''
             }
         }
     }
@@ -69,13 +85,11 @@ pipeline {
     post {
         always {
             echo '🧹 Limpiando recursos...'
-            sh '''
-            docker image prune -f || true
-            '''
+            sh 'docker image prune -f || true'
         }
 
         success {
-            echo '✅ Pipeline exitoso!'
+            echo '✅ Pipeline exitoso! Imagen publicada en GitHub Packages'
         }
 
         failure {
