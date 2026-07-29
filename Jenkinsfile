@@ -61,11 +61,11 @@ pipeline {
             passwordVariable: 'TOKEN'
         )]) {
             sh '''
-            echo $TOKEN | docker login ghcr.io -u $USERNAME --password-stdin
+            echo $TOKEN | docker login $REGISTRY -u $USERNAME --password-stdin
             
-            FULL_IMAGE=ghcr.io/yairestrada/mi-app:latest
+            FULL_IMAGE=$REPO:$TAG
             
-            docker tag mi-app:latest $FULL_IMAGE
+            docker tag $IMAGE_NAME:$TAG $FULL_IMAGE
             docker push $FULL_IMAGE
             '''
         }
