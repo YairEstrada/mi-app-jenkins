@@ -1,51 +1,24 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:18-alpine'
-            args '-v /var/run/docker.sock:/var/run/docker.sock -u root'
-        }
-    }
+    agent any
 
     environment {
-        GITHUB_USER = 'yairestrada' // 👈 en minúsculas
-        REGISTRY = 'ghcr.io'
-        IMAGE_NAME = 'yairestrada/mi-app-jenkins' // 👈 en minúsculas
-        COMMIT_SHA = ''
-        BUILD_TIMESTAMP = ''
-        IMAGE_TAG_LATEST = ''
-        IMAGE_TAG_COMMIT = ''
-        IMAGE_TAG_BUILD = ''
+        IMAGE_NAME = "ghcr.io/yairestrada/mi-app-jenkins"
     }
 
     stages {
+
         stage('Prepare') {
             steps {
                 echo '🔧 Preparando entorno...'
-
-                sh 'apk add --no-cache docker-cli git'
-                sh 'docker --version'
-                sh 'node --version'
-                sh 'npm --version'
-
-                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/mi-app-jenkins'
+                sh 'apk add --no-cache docker-cli git || true'
 
                 script {
-                    // 🔥 Obtener valores correctamente
-                    def commit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def timestamp = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
-
-                    // 🔥 Asignar a env (forma correcta)
-                    env.COMMIT_SHA = commit
-                    env.BUILD_TIMESTAMP = timestamp
-                    env.IMAGE_TAG_LATEST = "${env.REGISTRY}/${env.IMAGE_NAME}:latest"
-                    env.IMAGE_TAG_COMMIT = "${env.REGISTRY}/${env.IMAGE_NAME}:${commit}"
-                    env.IMAGE_TAG_BUILD = "${env.REGISTRY}/${env.IMAGE_NAME}:build-${timestamp}"
-
-                    // 🔍 Debug
-                    echo "COMMIT_SHA=${env.COMMIT_SHA}"
-                    echo "BUILD_TIMESTAMP=${env.BUILD_TIMESTAMP}"
-                    echo "IMAGE_TAG_COMMIT=${env.IMAGE_TAG_COMMIT}"
+                    COMMIT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    BUILD_TIMESTAMP = sh(script: "date '+%Y%m%d-%H%M%S'", returnStdout: true).trim()
+                    IMAGE_TAG = "${COMMIT_SHA}-${BUILD_TIMESTAMP}"
                 }
+
+                echo "Tag: ${IMAGE_TAG}"
             }
         }
 
@@ -64,8 +37,10 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    sh "echo Building image: ${env.IMAGE_TAG_COMMIT}"
-                    docker.build("${env.IMAGE_TAG_COMMIT}")
+                    sh """
+                    docker build -t ${IMAGE_NAME}:latest .
+                    docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
@@ -74,14 +49,9 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     sh """
-                        echo \$GITHUB_TOKEN | docker login ${env.REGISTRY} -u ${env.GITHUB_USER} --password-stdin
-
-                        docker tag ${env.IMAGE_TAG_COMMIT} ${env.IMAGE_TAG_LATEST}
-                        docker tag ${env.IMAGE_TAG_COMMIT} ${env.IMAGE_TAG_BUILD}
-
-                        docker push ${env.IMAGE_TAG_COMMIT}
-                        docker push ${env.IMAGE_TAG_LATEST}
-                        docker push ${env.IMAGE_TAG_BUILD}
+                    echo \$GITHUB_TOKEN | docker login ghcr.io -u yairestrada --password-stdin
+                    docker push ${IMAGE_NAME}:latest
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
@@ -89,24 +59,18 @@ pipeline {
 
         stage('Verify') {
             steps {
-                sh """
-                    echo "✅ Imagen publicada: ${env.IMAGE_TAG_COMMIT}"
-                    echo "Tags: latest, build-${env.BUILD_TIMESTAMP}"
-                """
+                echo '✅ Imagen subida correctamente a GHCR'
             }
         }
     }
 
     post {
-        success {
-            echo '🎉 Pipeline completado exitosamente!'
-        }
         failure {
             echo '❌ Pipeline falló!'
         }
-        cleanup {
+        always {
             echo '🧹 Limpiando recursos...'
-            sh 'docker image prune -f || true'
+            sh 'docker image prune -f'
         }
     }
 }
